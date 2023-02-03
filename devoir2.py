@@ -28,12 +28,12 @@ states = {"population en augmentation" : 0, "population stable" : 1, "population
 nb_actions = 2
 actions = {"zones protegees" : 0, "reintroduction de specimens" : 1}
 # nombre de semestre d'observation
-N = 5
+N = 4
 
 # matrice de transition
-a = [[[0.7, 0.3, 0.0],
+a = [[[0.6, 0.3, 0.1],
       [0.2, 0.6, 0.2],
-      [0.0, 0.4, 0.6]],
+      [0.1, 0.4, 0.5]],
     [[0.6, 0.2, 0.2],
       [0.3, 0.5, 0.2],
       [0.2, 0.3, 0.5]]]
@@ -49,18 +49,21 @@ J = np.zeros((N+1,nb_states))
 mu = np.zeros((N+1,nb_states))
 
 # profits
-profits = np.zeros((nb_actions))
 policy = np.zeros((nb_actions))
+profits = np.zeros((nb_actions))
 
 
 # population initiale
 population = 60
 # initialisation de J
 for i in range(nb_states):
-    J[N][i] = 60
+    for j in range(nb_actions):
+        profits[j] = np.dot(a[j][i],R[i]) + population
+    J[N][i] = np.max(profits)
+    mu[N][i] = np.argmax(profits)
 
-print("J(N): {0:.2f} | {0:.2f} | {0:.2f}".format(J[N][0],J[N][1],J[N][2]))
-print("mu(N): {a}, {b}, {c}".format(a=mu[N][0],b=mu[N][1],c=mu[N][2]))
+print("J(5): {0:.2f} | {1:.2f} | {2:.2f}".format(J[N][0],J[N][1],J[N][2]))
+print("mu(5): {0}, {1}, {2}".format(mu[N][0],mu[N][1],mu[N][2]), end="\n\n")
 
 # boucle principale
 for t in reversed(range(N)):
@@ -69,17 +72,24 @@ for t in reversed(range(N)):
         best_a = -1
         value = 0
         for j in range(nb_actions):
-            profits[j] = np.dot(a[j][i],(R[i] + J[t+1][i]))
+            profits[j] = np.dot(a[j][i],R[i]) + J[t+1][i]
         J[t][i] = np.max(profits)
+        print("J({0})[{1}]: {2:.2f} ".format(t+1, i, J[t][i]), end="| ")
         mu[t][i] = np.argmax(profits)
+        print("mu({0})[{1}]: {2}".format(t+1, i, mu[t][i]))
+    
+    print('')
+    for i in range(nb_states):
+        print("J({0})[{1}]: {2:.2f}".format(t+1, i, J[t][i]), end=" ")
+    print('')
+    for i in range(nb_states):
+        print("mu({0})[{1}]: {2}".format(t+1, i, mu[t][i]), end=" ")
+    print("\n")
 
 #Affichage de la valeur optimale et de la politique optimale
 print("Resultats...")
-for t in range(N):
-    for i in range(nb_states):
-        print("J("+str(t)+"): {0:.2f}".format(J[t][i]), end=" ")
-    print("\n")
-
+J_0 = np.max(J[0])
+print("J({0}): {1:.2f} ".format(0, J_0))
 print("Finalement la strategie optimale est :")
 for i in range(N):
     print("{"+str(mu[i])+"}", end=",")
