@@ -228,7 +228,7 @@ def main():
 
     plot_by_InitState(N,population)
 
-    #plot_by_N(population)
+    plot_by_N(population)
 
 if __name__ == "__main__":
     main()
