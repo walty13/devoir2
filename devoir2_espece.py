@@ -33,15 +33,16 @@ nb_actions = 2
 actions = {0:"zones protegees", 1:"reintroduction de specimens"}
 
 # matrice de transition
-P = [[[0.7, 0.3, 0.0],
-      [0.3, 0.4, 0.3],
-      [0.1, 0.5, 0.4]],
-     [[0.6, 0.3, 0.1],
-      [0.3, 0.5, 0.2],
-      [0.2, 0.4, 0.4]]]
+P = [[[0.6, 0.3, 0.1], # S0 -> a0
+      [0.3, 0.4, 0.3], # S1 -> a0
+      [0.1, 0.5, 0.4]], # S2 -> a0
+      
+     [[0.7, 0.3, 0.0], # S0 -> a1
+      [0.4, 0.4, 0.2], # S1 -> a1
+      [0.2, 0.5, 0.3]]] # S2 -> a1
 
 # récompenses
-R = [4,2,-3]
+R = [4,1,-3]
 
 # profits
 policy = np.zeros((nb_actions))
@@ -77,7 +78,13 @@ def main_boucle(N, J, mu):
         #for i in range(nb_states):
         #    print("mu({0})[{1}]: {2}".format(t+1, i, mu[t][i]), end=" ")
         #print("\n")
-    
+
+    #J_0 = np.max(J[0])
+    #print("J({0}): {1:.2f} ".format(0, J_0))
+    #print("Finalement la strategie optimale est :")
+    #print(mu[0])
+    #print()
+
     return J, mu
 
 def plot_by_InitState(N, population):
@@ -92,50 +99,50 @@ def plot_by_InitState(N, population):
     initialisation(N, J, mu)
     # boucle principale
     J, mu = main_boucle(N, J, mu)
-
-    #Affichage de la valeur optimale et de la politique optimale
-    print("Resultats...")
-    J_0 = population + np.max(J[0])
-    print("J({0}): {1:.2f} ".format(0, J_0))
-    print("Finalement la strategie optimale est :")
-    print(mu[0])
-
-    print("De manière générale il faut adopter la politique suivante pour chacun des etats :")
-    opti = np.matrix([[int(mu[t][i]) for i in range(nb_states)] for t in range(N-1)]).mean(0)
-    print([actions[np.array(opti)[0][i]] for i in range(nb_states)])
     
     for s in init_state:
-        # affichage des graphs
-        #plot_opti(N, J, mu)
-
-        J_bis = np.zeros(np.shape(J))
-        for t in range(N):
-            J_bis[t] = J[N-t]
-        
-        state = s
-        next_action = int(mu[0][state])
-        sequence = []
-        for t in range(N):
-            weights = P[next_action][state]
-            state = choices([0,1,2], weights)[0]
+        moyenne = []
+        for n in range(50):
+            J_bis = np.zeros(np.shape(J))
+            for t in range(N):
+                J_bis[t] = J[N-t]
+            
+            state = s
             next_action = int(mu[0][state])
-            sequence.append(state)
+            sequence = []
+            for t in range(N):
+                weights = P[next_action][state]
+                state = choices([0,1,2], weights)[0]
+                next_action = int(mu[0][state])
+                sequence.append(state)
+        
+            results = [60]
+            for i in range(1,len(sequence)):
+                results.append(results[i-1]+R[sequence[i]])
+            moyenne.append(results)
+        mean = np.mean(moyenne, axis=0)
+        tab.append(mean)
+        #Affichage de la valeur optimale et de la politique optimale
+        print("Resultats pour l'etat initial {0}...".format(s))
+        J_0 = mean[N-1]
+        print("J({0}): {1:.2f} ".format(0, J_0))
+        print("Finalement la strategie optimale est :")
+        print(mu[0])
     
-        results = [60]
-        for i in range(1,len(sequence)):
-            results.append(results[i-1]+R[sequence[i]])
-        tab.append(results)
-
+    print()
+        
     plt.figure(1)
     c = ['r','g','b']
     for i in range(len(init_state)):
         plt.plot(np.arange(N), tab[i], marker="s", color=c[i])
+        plt.annotate('%0.2f' % tab[i].max(), xy=(1, tab[i].max()), xytext=(8, 0), 
+                 xycoords=('axes fraction', 'data'), textcoords='offset points')
     
     plt.xlabel('Trimestres')
     plt.ylabel('Population')
-    plt.title('Evolution de l\'espèce en fonction du temps et de l\'état initial')
+    plt.title('Evolution moyenne de l\'espèce en fonction de l\'état initial')
     plt.xticks(np.arange(N))
-    plt.ylim(50,90)
+    plt.ylim(55,70)
     plt.legend(['augmentation', 'stable', 'déclin'])
     plt.show()
 
@@ -143,50 +150,55 @@ def plot_by_InitState(N, population):
 def plot_by_N(population):
     tab=[]
     trimestres = [3, 6, 9]
-    
+    J_0 = 0
+    mu = []
+    J = []
     for N in trimestres:
-        # J(x) : population à l'étape k (semestre k) si le client a pris ses decisions de facon optimale
-        J = np.zeros((N+1,nb_states))
-        # mu(x) : politique optimale a l'etat k
-        mu = np.zeros((N+1,nb_states))
+        moyenne = []
+        for n in range(50):
+            # J(x) : population à l'étape k (semestre k) si le client a pris ses decisions de facon optimale
+            J = np.zeros((N+1,nb_states))
+            # mu(x) : politique optimale a l'etat k
+            mu = np.zeros((N+1,nb_states))
 
-        # initialisation de J
-        initialisation(N, J, mu)
+            # initialisation de J
+            initialisation(N, J, mu)
 
-        # boucle principale
-        J, mu = main_boucle(N, J, mu)
+            # boucle principale
+            J, mu = main_boucle(N, J, mu)
 
+            #print("De manière générale il faut adopter la politique suivante pour chacun des etats :")
+            #opti = np.matrix([[int(mu[t][i]) for i in range(nb_states)] for t in range(N-1)]).mean(0)
+            #print([actions[np.array(opti)[0][i]] for i in range(nb_states)])
+
+            # affichage des graphs
+            #plot_opti(N, J, mu)
+
+            J_bis = np.zeros(np.shape(J))
+            for t in range(N):
+                J_bis[t] = J[N-t]
+            
+            state = 2
+            next_action = int(mu[0][state])
+            sequence = []
+            for t in range(N):
+                weights = P[next_action][state]
+                state = choices([0,1,2], weights)[0]
+                next_action = int(mu[0][state])
+                sequence.append(state)
+        
+            results = [60]
+            for i in range(1,len(sequence)):
+                results.append(results[i-1]+R[sequence[i]])
+            moyenne.append(results)
+        mean = np.mean(moyenne, axis=0)
+        tab.append(mean)
         #Affichage de la valeur optimale et de la politique optimale
-        print("Resultats...")
-        J_0 = population + np.max(J[0])
+        print("Resultats plot by N...")
+        J_0 = mean[N-1]
         print("J({0}): {1:.2f} ".format(0, J_0))
         print("Finalement la strategie optimale est :")
         print(mu[0])
-
-        print("De manière générale il faut adopter la politique suivante pour chacun des etats :")
-        opti = np.matrix([[int(mu[t][i]) for i in range(nb_states)] for t in range(N-1)]).mean(0)
-        print([actions[np.array(opti)[0][i]] for i in range(nb_states)])
-
-        # affichage des graphs
-        #plot_opti(N, J, mu)
-
-        J_bis = np.zeros(np.shape(J))
-        for t in range(N):
-            J_bis[t] = J[N-t]
-        
-        state = 1
-        next_action = int(mu[0][state])
-        sequence = []
-        for t in range(N):
-            weights = P[next_action][state]
-            state = choices([0,1,2], weights)[0]
-            next_action = int(mu[0][state])
-            sequence.append(state)
-    
-        results = [60]
-        for i in range(1,len(sequence)):
-            results.append(results[i-1]+R[sequence[i]])
-        tab.append(results)
     
     plt.figure(2)
     c = ['r','g','b']
@@ -194,11 +206,13 @@ def plot_by_N(population):
         N = trimestres[i]
         t = np.arange(len(tab[i]))
         plt.plot(t, tab[i], marker="s", color=c[i])
+        plt.annotate('%0.2f' % tab[i].max(), xy=(1, tab[i].max()), xytext=(8, 0), 
+                 xycoords=('axes fraction', 'data'), textcoords='offset points')
         i+=1
 
     plt.xlabel('Trimestres')
     plt.ylabel('Population')
-    plt.title('Evolution de l\'espèce en fonction du temps en partant d\'un état stable')
+    plt.title('Evolution moyenne de l\'espèce en fonction en partant d\'un état de déclin')
     plt.xticks(np.arange(N))
     plt.ylim(50,90)
     plt.legend(['3', '6', '9'])
@@ -208,11 +222,13 @@ def plot_by_N(population):
 
 def main():
     # population initiale
-    population = 60
+    population = 36
     # N : nombre de trimestres d'observation
     N = 5
+
     plot_by_InitState(N,population)
-    plot_by_N(population)
+
+    #plot_by_N(population)
 
 if __name__ == "__main__":
     main()
